@@ -1,28 +1,25 @@
-//     ========     Fungsi MengHapus Pembelian Sebelumnya     ========
-
-  // Untuk hapus berdasar UUID 1 Sheet
+  //     ========     MengHapus Pembelian Sebelumnya berdasar UUID 1 Sheet     ========
     function HapusPembeliansebelumdenganUUID(){
       ModulHapusSudahdibeli("UUID");
     }
-  //  
+  //     ========     MengHapus Pembelian Sebelumnya berdasar UUID 1 Sheet     ======== 
 
-  // Untuk hapus berdasar UUID Semua Sheet
+  //     ========     MengHapus Pembelian Sebelumnya berdasar UUID Semua Sheet     ========
     function HapusPembeliansebelumdenganUUIDALLSHEET() {
     //PERLU DIRUBAH ============================================================================== 
-    const mode ="UUID";
     const sheetMulai = 0; 
     //PERLU DIRUBAH ==============================================================================
       ModulHapusSudahdibeliALLSHEET("UUID",sheetMulai);
     }
-  //  
+  //     ========     MengHapus Pembelian Sebelumnya berdasar UUID Semua Sheet     ========  
 
-  // Untuk hapus berdasar ISBN & e-ISBN 1 Sheet
+  //     ========     MengHapus Pembelian Sebelumnya berdasar ISBN & e-ISBN 1 Sheet     ========
     function HapusPembeliansebelumdenganISBN(){
       ModulHapusSudahdibeli("ISBN");
     }
-  //  
+  //     ========     MengHapus Pembelian Sebelumnya berdasar ISBN & e-ISBN 1 Sheet     ========  
 
-  // Untuk hapus berdasar ISBN & e-ISBN Semua Sheet
+  //     ========     MengHapus Pembelian Sebelumnya berdasar ISBN & e-ISBN Semua Sheet     ========
     function HapusPembeliansebelumdenganISBNALLSHEET() {
     //PERLU DIRUBAH ============================================================================== 
     const sheetMulai = 0; 
@@ -30,165 +27,170 @@
     
       ModulHapusSudahdibeliALLSHEET("ISBN",sheetMulai);
     }
-  //  
+  //     ========     MengHapus Pembelian Sebelumnya berdasar ISBN & e-ISBN Semua Sheet     ========  
 
-  function ModulHapusSudahdibeli(type, sheetData) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    if (!sheetData) sheetData = ss.getActiveSheet();
-    const nama = sheetData.getName();
+  //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya 1 Sheet    ========
+    function ModulHapusSudahdibeli(type, sheetData) {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      if (!sheetData) sheetData = ss.getActiveSheet();
+      const nama = sheetData.getName();
 
-    // ✅ Skip sheet non-penerbit
-    const sheetExcluded = ['Form Pengadaan', 'Hasil Seleksi', 'Referensi', 'DaftarISBN', 'DaftarUUID'];
-    if (sheetExcluded.includes(nama)) {
-      Logger.log('➡️ Sheet dilewati: ' + nama);
-      return;
-    }
-
-    Logger.log('▶ Menjalankan HapusPembelianSebelumnya pada: ' + nama);
-
-    const headerRow = 9;
-    const startRow = 10;
-    const lastRow = sheetData.getLastRow();
-    const numRows = lastRow - startRow + 1;
-
-    if (numRows < 1) {
-      Logger.log("⚠️ Tidak ada data untuk diproses.");
-      return;
-    }
-
-    // ✅ Ambil header
-    const headers = sheetData.getRange(headerRow, 1, 1, sheetData.getLastColumn())
-      .getValues()[0]
-      .map(h => String(h).toLowerCase().trim());
-    const data = sheetData.getRange(startRow, 1, numRows, sheetData.getLastColumn()).getValues();
-
-    let filteredData = [];
-
-    // ===== Hapus Berdasarkan UUID =====
-    if (type === "UUID") {
-      const sheetUUID = ss.getSheetByName("DaftarUUID");
-      if (!sheetUUID) throw new Error("Sheet 'DaftarUUID' tidak ditemukan.");
-      const uuidRef = sheetUUID.getRange("A:A").getValues().flat().filter(Boolean);
-      const uuidSet = new Set(uuidRef.map(val => String(val).trim()));
-
-      const uuidIndex = headers.findIndex(h => h.includes("uuid"));
-      if (uuidIndex === -1) throw new Error(`Kolom UUID tidak ditemukan di baris ${headerRow}`);
-
-      filteredData = data.filter(row => {
-        const uuid = String(row[uuidIndex]).trim();
-        return !uuidSet.has(uuid);
-      });
-    }
-
-    // ===== Hapus Berdasarkan ISBN =====
-    if (type === "ISBN") {
-      const sheetISBN = ss.getSheetByName("DaftarISBN");
-      if (!sheetISBN) throw new Error("Sheet 'DaftarISBN' tidak ditemukan.");
-      const rawISBNData = sheetISBN.getRange("A:B").getValues();
-      const isbnSet = new Set();
-      rawISBNData.forEach(([isbnCetak, isbnElektronik]) => {
-        const clean1 = String(isbnCetak).replace(/\D/g, "");
-        const clean2 = String(isbnElektronik).replace(/\D/g, "");
-        if (clean1) isbnSet.add(clean1);
-        if (clean2) isbnSet.add(clean2);
-      });
-
-      const isbnCetakIndex = headers.findIndex(h => h.includes("isbn cetak"));
-      const isbnElektronikIndex = headers.findIndex(h => h.includes("isbn elektronik"));
-      if (isbnCetakIndex === -1 && isbnElektronikIndex === -1)
-        throw new Error("Kolom ISBN tidak ditemukan di baris " + headerRow);
-
-      filteredData = data.filter(row => {
-        const valCetak = isbnCetakIndex !== -1 ? String(row[isbnCetakIndex]).replace(/\D/g, "") : "";
-        const valElektronik = isbnElektronikIndex !== -1 ? String(row[isbnElektronikIndex]).replace(/\D/g, "") : "";
-        return !(isbnSet.has(valCetak) || isbnSet.has(valElektronik));
-      });
-    }
-
-    // Kosongkan area lama
-    sheetData.getRange(startRow, 1, numRows, sheetData.getLastColumn()).clearContent();
-
-    // ✅ Tulis ulang data hasil filter
-    if (filteredData.length > 0) {
-      sheetData.getRange(startRow, 1, filteredData.length, sheetData.getLastColumn())
-        .setValues(filteredData);
-    }
-
-    const deletedCount = data.length - filteredData.length;
-
-    // ✅ Jika sheet kosong, hapus
-    if (filteredData.length === 0) {
-      const namaPenerbit = sheetData.getName().replace(/^\d+\.\s*/, "").trim();
-      ss.deleteSheet(sheetData);
-      ModulHapusBarisDariHasilSeleksi(namaPenerbit);
-      Logger.log(`🗑 Sheet '${nama}' dihapus karena kosong.`);
-      return;
-    }
-
-    Logger.log(`✅ [${type}] Selesai. Total: ${data.length}, dihapus: ${deletedCount}, tersisa: ${filteredData.length}`);
-
-    // ✅ Atur tampilan khusus sheet ini
-    modulFungsiTampilanSheetPenerbit(sheetData);
-  }
-  
-  function ModulHapusSudahdibeliALLSHEET(mode, sheetMulai) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const semuaSheet = ss.getSheets();
-    const sheetExcluded = [
-      'Form Pengadaan',
-      'Hasil Seleksi',
-      'Referensi',
-      'DaftarISBN',
-      'DaftarUUID'
-    ];
-
-    if (sheetMulai < 0 || sheetMulai >= semuaSheet.length) {
-      Logger.log("❌ Nomor sheet tidak valid.");
-      return;
-    }
-
-    let totalDiproses = 0;
-    semuaSheet.slice(sheetMulai).forEach(sheet => {
-      const nama = sheet.getName();
+      // ✅ Skip sheet non-penerbit
+      const sheetExcluded = ['Form Pengadaan', 'Hasil Seleksi', 'Referensi', 'DaftarISBN', 'DaftarUUID'];
       if (sheetExcluded.includes(nama)) {
-        Logger.log("➡️ Skip sheet: " + nama);
+        Logger.log('➡️ Sheet dilewati: ' + nama);
         return;
       }
 
-      try {
-        Logger.log(`▶ Menjalankan HapusPembelian pada: ${nama}`);
-        ModulHapusSudahdibeli(mode, sheet);
-        totalDiproses++;
-      } catch (err) {
-        Logger.log(`⚠️ Gagal di sheet ${nama}: ${err.message}`);
+      Logger.log('▶ Menjalankan HapusPembelianSebelumnya pada: ' + nama);
+
+      const headerRow = 9;
+      const startRow = 10;
+      const lastRow = sheetData.getLastRow();
+      const numRows = lastRow - startRow + 1;
+
+      if (numRows < 1) {
+        Logger.log("⚠️ Tidak ada data untuk diproses.");
+        return;
       }
-    });
 
-    Logger.log(`✅ Selesai Hapus Data di ${totalDiproses} sheet (mode: ${mode})`);
-  }
+      // ✅ Ambil header
+      const headers = sheetData.getRange(headerRow, 1, 1, sheetData.getLastColumn())
+        .getValues()[0]
+        .map(h => String(h).toLowerCase().trim());
+      const data = sheetData.getRange(startRow, 1, numRows, sheetData.getLastColumn()).getValues();
 
+      let filteredData = [];
 
-  function ModulHapusBarisDariHasilSeleksi(namaPenerbit) {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Hasil Seleksi");
-    const data = sheet.getDataRange().getValues();
-    const barisUntukHapus = [];
+      // ===== Hapus Berdasarkan UUID =====
+      if (type === "UUID") {
+        const sheetUUID = ss.getSheetByName("DaftarUUID");
+        if (!sheetUUID) throw new Error("Sheet 'DaftarUUID' tidak ditemukan.");
+        const uuidRef = sheetUUID.getRange("A:A").getValues().flat().filter(Boolean);
+        const uuidSet = new Set(uuidRef.map(val => String(val).trim()));
 
-    for (let i = 0; i < data.length; i++) {
-      const nama = String(data[i][1] || "").replace(/^\d+\.\s*/, "").trim();
-      if (nama.toLowerCase() === namaPenerbit.toLowerCase()) {
-        barisUntukHapus.push(i + 1);
+        const uuidIndex = headers.findIndex(h => h.includes("uuid"));
+        if (uuidIndex === -1) throw new Error(`Kolom UUID tidak ditemukan di baris ${headerRow}`);
+
+        filteredData = data.filter(row => {
+          const uuid = String(row[uuidIndex]).trim();
+          return !uuidSet.has(uuid);
+        });
       }
+
+      // ===== Hapus Berdasarkan ISBN =====
+      if (type === "ISBN") {
+        const sheetISBN = ss.getSheetByName("DaftarISBN");
+        if (!sheetISBN) throw new Error("Sheet 'DaftarISBN' tidak ditemukan.");
+        const rawISBNData = sheetISBN.getRange("A:B").getValues();
+        const isbnSet = new Set();
+        rawISBNData.forEach(([isbnCetak, isbnElektronik]) => {
+          const clean1 = String(isbnCetak).replace(/\D/g, "");
+          const clean2 = String(isbnElektronik).replace(/\D/g, "");
+          if (clean1) isbnSet.add(clean1);
+          if (clean2) isbnSet.add(clean2);
+        });
+
+        const isbnCetakIndex = headers.findIndex(h => h.includes("isbn cetak"));
+        const isbnElektronikIndex = headers.findIndex(h => h.includes("isbn elektronik"));
+        if (isbnCetakIndex === -1 && isbnElektronikIndex === -1)
+          throw new Error("Kolom ISBN tidak ditemukan di baris " + headerRow);
+
+        filteredData = data.filter(row => {
+          const valCetak = isbnCetakIndex !== -1 ? String(row[isbnCetakIndex]).replace(/\D/g, "") : "";
+          const valElektronik = isbnElektronikIndex !== -1 ? String(row[isbnElektronikIndex]).replace(/\D/g, "") : "";
+          return !(isbnSet.has(valCetak) || isbnSet.has(valElektronik));
+        });
+      }
+
+      // Kosongkan area lama
+      sheetData.getRange(startRow, 1, numRows, sheetData.getLastColumn()).clearContent();
+
+      // ✅ Tulis ulang data hasil filter
+      if (filteredData.length > 0) {
+        sheetData.getRange(startRow, 1, filteredData.length, sheetData.getLastColumn())
+          .setValues(filteredData);
+      }
+
+      const deletedCount = data.length - filteredData.length;
+
+      // ✅ Jika sheet kosong, hapus
+      if (filteredData.length === 0) {
+        const namaPenerbit = sheetData.getName().replace(/^\d+\.\s*/, "").trim();
+        ss.deleteSheet(sheetData);
+        ModulHapusBarisDariHasilSeleksi(namaPenerbit);
+        Logger.log(`🗑 Sheet '${nama}' dihapus karena kosong.`);
+        return;
+      }
+
+      Logger.log(`✅ [${type}] Selesai. Total: ${data.length}, dihapus: ${deletedCount}, tersisa: ${filteredData.length}`);
+
+      // ✅ Atur tampilan khusus sheet ini
+      modulFungsiTampilanSheetPenerbit(sheetData);
     }
 
-    barisUntukHapus.reverse().forEach(row => sheet.deleteRow(row));
-  }
+    function ModulHapusBarisDariHasilSeleksi(namaPenerbit) {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Hasil Seleksi");
+      const data = sheet.getDataRange().getValues();
+      const barisUntukHapus = [];
 
+      for (let i = 0; i < data.length; i++) {
+        const nama = String(data[i][1] || "").replace(/^\d+\.\s*/, "").trim();
+        if (nama.toLowerCase() === namaPenerbit.toLowerCase()) {
+          barisUntukHapus.push(i + 1);
+        }
+      }
+
+      barisUntukHapus.reverse().forEach(row => sheet.deleteRow(row));
+    }
+
+  //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya 1 Sheet    ========  
+
+  //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Semua Sheet    ========  
+    function ModulHapusSudahdibeliALLSHEET(mode, sheetMulai) {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const semuaSheet = ss.getSheets();
+      const mulai = sheetMulai + 2;
+      const sheetExcluded = [
+        'Form Pengadaan',
+        'Hasil Seleksi',
+        'Referensi',
+        'DaftarISBN',
+        'DaftarUUID'
+      ];
+
+      if (sheetMulai < 0 || sheetMulai >= semuaSheet.length) {
+        Logger.log("❌ Nomor sheet tidak valid.");
+        return;
+      }
+
+      let totalDiproses = 0;
+      semuaSheet.slice(mulai).forEach(sheet => {
+        const nama = sheet.getName();
+        if (sheetExcluded.includes(nama)) {
+          Logger.log("➡️ Skip sheet: " + nama);
+          return;
+        }
+
+        try {
+          Logger.log(`▶ Menjalankan HapusPembelian pada: ${nama}`);
+          ModulHapusSudahdibeli(mode, sheet);
+          totalDiproses++;
+        } catch (err) {
+          Logger.log(`⚠️ Gagal di sheet ${nama}: ${err.message}`);
+        }
+      });
+
+      Logger.log(`✅ Selesai Hapus Data di ${totalDiproses} sheet (mode: ${mode})`);
+    }
+  //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Semua Sheet    ========
+  
+//     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Dengan Batch    ========
   function jalankanSemuaSheetPenerbitBatch_HapusPembelian(mode = "ISBN") {//--------------------- pilihan    
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const semuaSheet = ss.getSheets()
       .map(s => s.getName())
       .filter(n => !SHEET_KECUALI.includes(n));
-
     const props = PropertiesService.getScriptProperties();
     props.setProperty("MODE_BATCH", mode);
     props.setProperty("DAFTAR_SHEET_PENERBIT", JSON.stringify(semuaSheet));
@@ -253,70 +255,74 @@
       Logger.log("✅ Semua sheet selesai diproses Fungsi MengHapus Pembelian Sebelumnya!");
     }
   }
+//     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Dengan Batch    ========  
 
+//     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
 
-/** 🧩 Notifikasi batch ke Telegram */
-function kirimNotifikasiBatch_HapusPembelian(hasilBatch_HapusPembelian, batchIndex) {
-  const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-  const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
-  const daftarSheet = hasilBatch_HapusPembelian.map(i => `${i.status} ${i.sheet}`).join('\n');
+  /** 🧩 Notifikasi batch ke Telegram */
+      function kirimNotifikasiBatch_HapusPembelian(hasilBatch_HapusPembelian, batchIndex) {
+        const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+        const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
+        const daftarSheet = hasilBatch_HapusPembelian.map(i => `${i.status} ${i.sheet}`).join('\n');
 
-  const pesan =
-`✅ *Batch #${batchIndex} Fungsi MengHapus Pembelian Sebelumnya selesai diproses!*
-📘 *Spreadsheet:* ${namaSpreadsheet}
+        const pesan =
+      `✅ *Batch #${batchIndex} Fungsi MengHapus Pembelian Sebelumnya selesai diproses!*
+      📘 *Spreadsheet:* ${namaSpreadsheet}
 
-📄 *Hasil batch:*
-${daftarSheet}
+      📄 *Hasil batch:*
+      ${daftarSheet}
 
-🕒 *Waktu selesai:* ${waktu}`;
+      🕒 *Waktu selesai:* ${waktu}`;
 
-  kirimPesanTelegram_(pesan);
-}
+        kirimPesanTelegram_HapusPembelian(pesan);
+      }
+  /** 🧩 Notifikasi batch ke Telegram */
 
+  /** 🧩 Notifikasi selesai semua batch */
+    function kirimNotifikasiSelesaiAkhir_HapusPembelian(totalSheet) {
+      const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+      const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
+      const pesan =
+    `🎉 *SEMUA SHEET SELESAI DIPROSES Fungsi MengHapus Pembelian Sebelumnya !*
+    📘 *Spreadsheet:* ${namaSpreadsheet}
+    📊 Total sheet: *${totalSheet}*
+    🕒 Waktu selesai: ${waktu}`;
+      kirimPesanTelegram_HapusPembelian(pesan);
+    }
+  /** 🧩 Notifikasi selesai semua batch */
 
-/** 🧩 Notifikasi selesai semua batch */
-function kirimNotifikasiSelesaiAkhir_HapusPembelian(totalSheet) {
-  const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-  const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
-  const pesan =
-`🎉 *SEMUA SHEET SELESAI DIPROSES Fungsi MengHapus Pembelian Sebelumnya !*
-📘 *Spreadsheet:* ${namaSpreadsheet}
-📊 Total sheet: *${totalSheet}*
-🕒 Waktu selesai: ${waktu}`;
-  kirimPesanTelegram_HapusPembelian(pesan);
-}
+  /** 📬 Kirim pesan ke Telegram */
+    function kirimPesanTelegram_HapusPembelian(pesan) {
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+      CHAT_IDS.forEach(id => {
+        try {
+          UrlFetchApp.fetch(url, {
+            method: "post",
+            contentType: "application/json",
+            payload: JSON.stringify({
+              chat_id: id,
+              text: pesan,
+              parse_mode: "Markdown"
+            }),
+            muteHttpExceptions: true
+          });
 
-
-/** 📬 Kirim pesan ke Telegram */
-function kirimPesanTelegram_HapusPembelian(pesan) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  CHAT_IDS.forEach(id => {
-    try {
-      UrlFetchApp.fetch(url, {
-        method: "post",
-        contentType: "application/json",
-        payload: JSON.stringify({
-          chat_id: id,
-          text: pesan,
-          parse_mode: "Markdown"
-        }),
-        muteHttpExceptions: true
+          Logger.log(`📨 Notifikasi dikirim ke ${id}`);
+        } catch (e) {
+          Logger.log(`⚠️ Gagal kirim notifikasi ke ${id}: ${e}`);
+        }
       });
-
-      Logger.log(`📨 Notifikasi dikirim ke ${id}`);
-    } catch (e) {
-      Logger.log(`⚠️ Gagal kirim notifikasi ke ${id}: ${e}`);
     }
-  });
-}
+  /** 📬 Kirim pesan ke Telegram */
 
-
-/** 🧩 Hapus semua trigger batch lama */
-function hapusSemuaTrigger_HapusPembelian() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === "jalankanBatchBerikutnya_HapusPembelian") {
-      ScriptApp.deleteTrigger(t);
+  /** 🧩 Hapus semua trigger batch lama */
+    function hapusSemuaTrigger_HapusPembelian() {
+      ScriptApp.getProjectTriggers().forEach(t => {
+        if (t.getHandlerFunction() === "jalankanBatchBerikutnya_HapusPembelian") {
+          ScriptApp.deleteTrigger(t);
+        }
+      });
     }
-  });
-}
-
+  /** 🧩 Hapus semua trigger batch lama */  
+  
+//     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
