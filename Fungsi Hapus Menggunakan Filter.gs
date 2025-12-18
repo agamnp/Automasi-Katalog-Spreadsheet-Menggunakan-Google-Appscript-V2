@@ -1,10 +1,20 @@
-  //     ========     Hapus Data Menggunakan Filter 1 Sheet    ========
+  // ======== Konfigurasi Filter Options Default ========
+      const filterOptionsDefault = {
+        kodeRef: { aktif: false, nilaiDiperbolehkan: [''] },   // ['001.01','001.02','001.03']},
+        tahun: { aktif: false, min: 0, max: 9999 },          
+        halaman: { aktif: false, min: 0, max: 99999 },
+        harga: { aktif: false, min: 0, max: 99999999 },
+        kategori: { aktif: false, nilaiDiperbolehkan: [''] },  // ['fiksi', 'bahasa', 'puisi','cerpen','novel']}
+      };
+  // ======== Konfigurasi Filter Options Default ======== 
+  
+  //     ========     MengHapus Data Menggunakan Filter 1 Sheet    ========
     function HapusDataDenganKriteria() {
       modulFungsiHapusDataDenganKriteria() ;
     }
-  //     ========     Hapus Data Menggunakan Filter 1 Sheet    ========
+  //     ========     MengHapus Data Menggunakan Filter 1 Sheet    ========
   
-  //     ========     Hapus Data Menggunakan Filter Semua Sheet    ========
+  //     ========     MengHapus Data Menggunakan Filter Semua Sheet    ========
     function HapusDataDenganKriteriaALLSHEET() {
     //PERLU DIRUBAH ============================================================================== 
     const sheetMulai = 0; 
@@ -14,8 +24,19 @@
 
     }
 
-  //     ========     Hapus Data Menggunakan Filter Semua Sheet    ========
+  //     ========     MengHapus Data Menggunakan Filter Semua Sheet    ========
+
+  //     ========     MengHapus Data Menggunakan Filter Dengan Batch    ========
+    function HapusDataDenganKriteriaBATCH() {
+      jalankanSemuaSheetPenerbitBatch_HapusDataDenganKriteria();
+    }
+  //     ========     MengHapus Data Menggunakan Filter Dengan Batch    ========
  
+ 
+ 
+
+
+
   //     ========     Fungsi Utama Hapus Data Menggunakan Filter  1 Sheet   ========
     function modulFungsiHapusDataDenganKriteria(sheet) {     
           const ss = SpreadsheetApp.getActiveSpreadsheet();    
@@ -32,14 +53,8 @@
 
           Logger.log("🔍 Memproses sheet: " + name);
 
-          // Konfigurasi filter
-          const filterOptions = {
-            kodeRef: { aktif: false, nilaiDiperbolehkan: ['001.01','001.02'
-            ]},
-            tahun: { aktif: false, min: 2021, max: 2025 },
-            halaman: { aktif: false, min: 151, max: 2025 },
-            harga: { aktif: false, min: 14800, max: 2025 }
-          };
+          // pakai default filter
+          const filterOptions = JSON.parse(JSON.stringify(filterOptionsDefault));
 
           const startRow = 10;
           const headerRow = 9;
@@ -61,6 +76,7 @@
           const getIndex = (colName) => headers.indexOf(colName.toLowerCase());
           const idx = {
             kodeRef: getIndex("kode referensi"),
+            kategori: getIndex("kategori*"),
             tahun: getIndex("tahun terbit digital*"),
             halaman: getIndex("jumlah halaman*"),
             harga: getIndex("harga satuan")
@@ -72,6 +88,11 @@
               const val = String(row[idx.kodeRef]).trim();
               if (!filterOptions.kodeRef.nilaiDiperbolehkan.includes(val)) return false;
             }
+            if (filterOptions.kategori.aktif && idx.kategori !== -1) {
+              const val = String(row[idx.kategori]).trim().toLowerCase();
+            const allowed = filterOptions.kategori.nilaiDiperbolehkan.map(v => v.toLowerCase());
+            if (!allowed.includes(val)) return false;
+          }
             if (filterOptions.tahun.aktif && idx.tahun !== -1) {
               const val = Number(row[idx.tahun]);
               if (isNaN(val) || val < filterOptions.tahun.min || val > filterOptions.tahun.max) return false;
@@ -141,8 +162,6 @@
     function modulFungsiHapusDataDenganKriteriaALLSHEET(sheetMulai) {
       const spreadsheet = SpreadsheetApp.getActive();
       const semuaSheet = spreadsheet.getSheets();
-      
-
       const mulai = sheetMulai + 2;
       const sheetDikecualikan = ['Form Pengadaan', 'Hasil Seleksi', 'Referensi', 'DaftarISBN', 'DaftarUUID'];
 
@@ -154,7 +173,7 @@
         const namaSheet = sheet.getName();
         if (sheetDikecualikan.includes(namaSheet)) return;
         spreadsheet.setActiveSheet(sheet);
-        modulFungsiHapusDataDenganKriteria();
+        modulFungsiHapusDataDenganKriteria(sheet);
       });
     }
   //     ========     Fungsi Utama Hapus Data Menggunakan Filter Semua Sheet    ========
@@ -236,46 +255,54 @@
     }
   //     ========     Fungsi Utama Hapus Data Menggunakan Filter Dengan Batch    ========
 
-//     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
- /** 🧩 Notifikasi batch ke Telegram */ 
+  //     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
+   // region
+  /** 🧩 Notifikasi batch ke Telegram */
     function kirimNotifikasiBatch_HapusDataDenganKriteria(hasilBatch, batchIndex) {
       const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-      const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
-      const daftarSheet = hasilBatch.map(
-        item => `${item.status} ${item.sheet}`
-      ).join('\n');
+      const namaSpreadsheet = SpreadsheetApp.getActive().getName();
+
+      const daftarSheet = hasilBatch
+        .map(item => `     • *${item.status} * ${item.sheet}`)
+        .join('\n');
 
       const pesan =
-    `✅ *Batch #${batchIndex} Fungsi Hapus Data Menggunakan Kriteria selesai diproses!*
-    📘 *Spreadsheet:* ${namaSpreadsheet}
+`
+📘 *Spreadsheet :*
+${namaSpreadsheet}
 
-    📄 *Hasil batch:*
-    ${daftarSheet}
+🗑️ *Batch #${batchIndex}-Penghapusan Data Menggunakan Kriteria *
 
-    🕒 *Waktu selesai:* ${waktu}`;
+${daftarSheet}
+
+🕒 *Waktu:* ${waktu}
+
+`;
 
       kirimPesanTelegram_HapusDataDenganKriteria(pesan);
     }
- /** 🧩 Notifikasi batch ke Telegram */
+  /** 🧩 Notifikasi batch ke Telegram */
 
   /** 🧩 Notifikasi selesai semua batch */
     function kirimNotifikasiSelesaiAkhir_HapusDataDenganKriteria(totalSheet) {
       const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-      const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
+      const namaSpreadsheet = SpreadsheetApp.getActive().getName();
 
       const pesan =
-    `🎉 *SEMUA SHEET SELESAI DIPROSES Fungsi Hapus Data Menggunakan Kriteria !*
-    📘 *Spreadsheet:* ${namaSpreadsheet}
-    
+`
+🎉 *Fungsi Hapus Data Menggunakan Kriteria Selesai*
 
-    📊 Total sheet: *${totalSheet}*
-    🕒 Waktu selesai: ${waktu}
+📘 *Spreadsheet:*
+${namaSpreadsheet}
 
-    Terima kasih sudah menunggu ☕`;
+📊 *Total Sheet:* ${totalSheet}
+
+🕒 *Selesai pada:* ${waktu}
+
+`;
 
       kirimPesanTelegram_HapusDataDenganKriteria(pesan);
     }
-
   /** 🧩 Notifikasi selesai semua batch */
 
   /** 📬 Kirim pesan ke Telegram */
@@ -297,16 +324,15 @@
 
           Logger.log(`📨 Notifikasi dikirim ke ${id}`);
         } catch (e) {
-          Logger.log(`⚠️ Gagal kirim notifikasi ke ${id}: ${e}`);
+          Logger.log(`⚠️ Gagal mengirim notifikasi ke ${id}: ${e}`);
         }
       });
     }
-  /** 📬 Kirim pesan ke Telegram */  
+  /** 📬 Kirim pesan ke Telegram */
 
   /** 🧩 Hapus semua trigger batch lama */
     function hapusSemuaTrigger_HapusDataDenganKriteria() {
-      const triggers = ScriptApp.getProjectTriggers();
-      triggers.forEach(t => {
+      ScriptApp.getProjectTriggers().forEach(t => {
         if (t.getHandlerFunction() === "jalankanBatchBerikutnya_Hapus_Kriteria") {
           ScriptApp.deleteTrigger(t);
         }
@@ -314,4 +340,5 @@
     }
   /** 🧩 Hapus semua trigger batch lama */
 
-//     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
+   // endregion 
+  //     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========

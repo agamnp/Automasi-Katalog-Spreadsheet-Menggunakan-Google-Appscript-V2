@@ -29,6 +29,23 @@
     }
   //     ========     MengHapus Pembelian Sebelumnya berdasar ISBN & e-ISBN Semua Sheet     ========  
 
+  //     ========     MengHapus Pembelian Sebelumnya Dengan Batch UUID    ========
+    function HapusPembelian_UUID_BATCH() {
+      jalankanSemuaSheetPenerbitBatch_HapusPembelian("UUID");
+    }
+  //     ========     MengHapus Pembelian Sebelumnya Dengan Batch UUID    ========
+
+ //     ========     MengHapus Pembelian Sebelumnya Dengan Batch ISBN    ========
+    function HapusPembelian_ISBN_BATCH() {
+      jalankanSemuaSheetPenerbitBatch_HapusPembelian("ISBN");
+    }
+ //     ========     MengHapus Pembelian Sebelumnya Dengan Batch ISBN    ========
+
+
+
+
+
+
   //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya 1 Sheet    ========
     function ModulHapusSudahdibeli(type, sheetData) {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -126,7 +143,7 @@
       Logger.log(`✅ [${type}] Selesai. Total: ${data.length}, dihapus: ${deletedCount}, tersisa: ${filteredData.length}`);
 
       // ✅ Atur tampilan khusus sheet ini
-      modulFungsiTampilanSheetPenerbit(sheetData);
+      modulFungsiTampilanSheetPenerbit(sheetData,true);
     }
 
     function ModulHapusBarisDariHasilSeleksi(namaPenerbit) {
@@ -185,94 +202,103 @@
     }
   //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Semua Sheet    ========
   
-//     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Dengan Batch    ========
-  function jalankanSemuaSheetPenerbitBatch_HapusPembelian(mode = "ISBN") {//--------------------- pilihan    
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const semuaSheet = ss.getSheets()
-      .map(s => s.getName())
-      .filter(n => !SHEET_KECUALI.includes(n));
-    const props = PropertiesService.getScriptProperties();
-    props.setProperty("MODE_BATCH", mode);
-    props.setProperty("DAFTAR_SHEET_PENERBIT", JSON.stringify(semuaSheet));
-    props.setProperty("TOTAL_SHEET", semuaSheet.length.toString());
-    props.setProperty("BATCH_INDEX", "1");
+  //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Dengan Batch    ========
+    function jalankanSemuaSheetPenerbitBatch_HapusPembelian(mode = "UUID") {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const semuaSheet = ss.getSheets()
+        .map(s => s.getName())
+        .filter(n => !SHEET_KECUALI.includes(n));
+      const props = PropertiesService.getScriptProperties();
+      props.setProperty("MODE_BATCH", mode);
+      props.setProperty("DAFTAR_SHEET_PENERBIT", JSON.stringify(semuaSheet));
+      props.setProperty("TOTAL_SHEET", semuaSheet.length.toString());
+      props.setProperty("BATCH_INDEX", "1");
 
-    jalankanBatchBerikutnya_HapusPembelian();
-  }
-
-  function jalankanBatchBerikutnya_HapusPembelian() {
-    const props = PropertiesService.getScriptProperties();
-    const mode = props.getProperty("MODE_BATCH");
-    let daftar = JSON.parse(props.getProperty("DAFTAR_SHEET_PENERBIT") || "[]");
-    let batchIndex = parseInt(props.getProperty("BATCH_INDEX") || "1");
-
-    if (daftar.length === 0) {
-      kirimNotifikasiSelesaiAkhir_HapusPembelian(parseInt(props.getProperty("TOTAL_SHEET") || "0"));
-      props.deleteAllProperties();
-      hapusSemuaTrigger_HapusPembelian();
-      Logger.log("✅ Semua sheet selesai diproses Fungsi MengHapus Pembelian Sebelumnya!");
-      return;
+      jalankanBatchBerikutnya_HapusPembelian();
     }
 
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const batchSheets = daftar.splice(0, JUMLAH_PER_BATCH);
-    const hasilBatch_HapusPembelian = [];
+    function jalankanBatchBerikutnya_HapusPembelian() {
+      const props = PropertiesService.getScriptProperties();
+      const mode = props.getProperty("MODE_BATCH");
+      let daftar = JSON.parse(props.getProperty("DAFTAR_SHEET_PENERBIT") || "[]");
+      let batchIndex = parseInt(props.getProperty("BATCH_INDEX") || "1");
 
-    Logger.log(`▶ Memproses Fungsi MengHapus Pembelian Sebelumnya batch #${batchIndex}: ${batchSheets.join(", ")}`);
-
-    batchSheets.forEach(nama => {
-      const sheet = ss.getSheetByName(nama);
-      if (!sheet) {
-        hasilBatch_HapusPembelian.push({ sheet: nama, status: "❌ Tidak ditemukan" });
+      if (daftar.length === 0) {
+        kirimNotifikasiSelesaiAkhir_HapusPembelian(parseInt(props.getProperty("TOTAL_SHEET") || "0"));
+        props.deleteAllProperties();
+        hapusSemuaTrigger_HapusPembelian();
+        Logger.log("✅ Semua sheet selesai diproses Fungsi MengHapus Pembelian Sebelumnya!");
         return;
       }
 
-      try {
-        ModulHapusSudahdibeli(mode, sheet);
-        hasilBatch_HapusPembelian.push({ sheet: nama, status: "✅ Berhasil" });
-      } catch (err) {
-        hasilBatch_HapusPembelian.push({ sheet: nama, status: `⚠️ Gagal: ${err.message}` });
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const batchSheets = daftar.splice(0, JUMLAH_PER_BATCH);
+      const hasilBatch_HapusPembelian = [];
+
+      Logger.log(`▶ Memproses Fungsi MengHapus Pembelian Sebelumnya batch #${batchIndex}: ${batchSheets.join(", ")}`);
+
+      batchSheets.forEach(nama => {
+        const sheet = ss.getSheetByName(nama);
+        if (!sheet) {
+          hasilBatch_HapusPembelian.push({ sheet: nama, status: "❌ Tidak ditemukan" });
+          return;
+        }
+
+        try {
+          ModulHapusSudahdibeli(mode, sheet);
+          hasilBatch_HapusPembelian.push({ sheet: nama, status: "✅ Berhasil" });
+        } catch (err) {
+          hasilBatch_HapusPembelian.push({ sheet: nama, status: `⚠️ Gagal: ${err.message}` });
+        }
+      });
+
+      kirimNotifikasiBatch_HapusPembelian(hasilBatch_HapusPembelian, batchIndex);
+      props.setProperty("DAFTAR_SHEET_PENERBIT", JSON.stringify(daftar));
+      props.setProperty("BATCH_INDEX", (batchIndex + 1).toString());
+
+      if (daftar.length > 0) {
+        const sisa = daftar.length;
+        const jedaDetik = sisa > 30 ? 20 : sisa > 10 ? 10 : 5;
+        hapusSemuaTrigger_HapusPembelian();
+        ScriptApp.newTrigger("jalankanBatchBerikutnya_HapusPembelian")
+          .timeBased()
+          .after(jedaDetik * 1000)
+          .create();
+        Logger.log(`⏱ Menjadwalkan Fungsi MengHapus Pembelian Sebelumnya batch berikutnya (${jedaDetik} detik)...`);
+      } else {
+        kirimNotifikasiSelesaiAkhir_HapusPembelian(parseInt(props.getProperty("TOTAL_SHEET") || "0"));
+        props.deleteAllProperties();
+        hapusSemuaTrigger_HapusPembelian();
+        Logger.log("✅ Semua sheet selesai diproses Fungsi MengHapus Pembelian Sebelumnya!");
       }
-    });
-
-    kirimNotifikasiBatch_HapusPembelian(hasilBatch_HapusPembelian, batchIndex);
-    props.setProperty("DAFTAR_SHEET_PENERBIT", JSON.stringify(daftar));
-    props.setProperty("BATCH_INDEX", (batchIndex + 1).toString());
-
-    if (daftar.length > 0) {
-      const sisa = daftar.length;
-      const jedaDetik = sisa > 30 ? 20 : sisa > 10 ? 10 : 5;
-      hapusSemuaTrigger_HapusPembelian();
-      ScriptApp.newTrigger("jalankanBatchBerikutnya_HapusPembelian")
-        .timeBased()
-        .after(jedaDetik * 1000)
-        .create();
-      Logger.log(`⏱ Menjadwalkan Fungsi MengHapus Pembelian Sebelumnya batch berikutnya (${jedaDetik} detik)...`);
-    } else {
-      kirimNotifikasiSelesaiAkhir_HapusPembelian(parseInt(props.getProperty("TOTAL_SHEET") || "0"));
-      props.deleteAllProperties();
-      hapusSemuaTrigger_HapusPembelian();
-      Logger.log("✅ Semua sheet selesai diproses Fungsi MengHapus Pembelian Sebelumnya!");
     }
-  }
-//     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Dengan Batch    ========  
+  //     ========     Fungsi Utama MengHapus Pembelian Sebelumnya Dengan Batch    ========  
 
 //     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
+   // region
 
   /** 🧩 Notifikasi batch ke Telegram */
       function kirimNotifikasiBatch_HapusPembelian(hasilBatch_HapusPembelian, batchIndex) {
         const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
         const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
-        const daftarSheet = hasilBatch_HapusPembelian.map(i => `${i.status} ${i.sheet}`).join('\n');
+        const props = PropertiesService.getScriptProperties();
+        const mode = props.getProperty("MODE_BATCH"); 
+        const daftarSheet = hasilBatch_HapusPembelian
+        .map(item => `     • *${item.status}*  ${item.sheet}`)
+        .join('\n');
 
         const pesan =
-      `✅ *Batch #${batchIndex} Fungsi MengHapus Pembelian Sebelumnya selesai diproses!*
-      📘 *Spreadsheet:* ${namaSpreadsheet}
+`
+📘 *Spreadsheet:* 
+${namaSpreadsheet}
 
-      📄 *Hasil batch:*
-      ${daftarSheet}
+✅ *Batch #${batchIndex} - Penghapusan Data Pembelian Dengan ${mode} Selesai ! *
 
-      🕒 *Waktu selesai:* ${waktu}`;
+${daftarSheet}
+
+🕒 *Waktu selesai:* ${waktu}
+
+`;
 
         kirimPesanTelegram_HapusPembelian(pesan);
       }
@@ -282,11 +308,21 @@
     function kirimNotifikasiSelesaiAkhir_HapusPembelian(totalSheet) {
       const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
       const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
+      const props = PropertiesService.getScriptProperties();
+      const mode = props.getProperty("MODE_BATCH"); 
       const pesan =
-    `🎉 *SEMUA SHEET SELESAI DIPROSES Fungsi MengHapus Pembelian Sebelumnya !*
-    📘 *Spreadsheet:* ${namaSpreadsheet}
-    📊 Total sheet: *${totalSheet}*
-    🕒 Waktu selesai: ${waktu}`;
+`
+🎉 *Fungsi Hapus Data Pembelian Dengan ${mode} Selesai !*
+
+📘 *Spreadsheet:* 
+${namaSpreadsheet}
+
+📊 Total sheet: *${totalSheet}*
+
+🕒 Waktu selesai: ${waktu}
+
+`;
+
       kirimPesanTelegram_HapusPembelian(pesan);
     }
   /** 🧩 Notifikasi selesai semua batch */
@@ -324,5 +360,5 @@
       });
     }
   /** 🧩 Hapus semua trigger batch lama */  
-  
+  // endregion 
 //     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========

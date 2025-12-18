@@ -12,6 +12,17 @@
     modulFungsiTampilanSheetPenerbitALLSHEET(sheetMulai);  }
 //     ========     Atur Tampilan Semua Sheet    ========
 
+//     ========     Fungsi Mengatur Tampilan Sheet Penerbit Batch     ========
+   function AturTampilanSheetBatch(){
+    jalankanSemuaSheetPenerbitBatch_Tampilan_Sheet_Penerbit();
+    }
+//     ========     Fungsi Mengatur Tampilan Sheet Penerbit Batch     ========
+
+
+
+
+
+
 //     ========     Fungsi Utama Mengatur Tampilan Sheet Penerbit    ========
   function modulFungsiTampilanSheetPenerbit(sheet, fromBatch = false) {
     // kalau dijalankan manual, hapus trigger
@@ -268,7 +279,7 @@
         return;
       }
       try {
-        modulFungsiTampilanSheetPenerbit(sheet);  //===================================== Fungsi Utama
+        modulFungsiTampilanSheetPenerbit(sheet,true);  //===================================== Fungsi Utama
     
         hasilBatchTampilan_Sheet_Penerbit.push({ sheet: nama, status: "✅ Berhasil" });
       } catch (err) {
@@ -304,79 +315,87 @@
 //     ========     Fungsi Utama Mengatur Tampilan Sheet Penerbit Dengan Batch    ========
 
 //     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
+  // region
   /** 🧩 Notifikasi batch ke Telegram */
-    function kirimNotifikasiBatch_Tampilan_Sheet_Penerbit(hasilBatchTampilan_Sheet_Penerbit, batchIndex) {
+    function kirimNotifikasiBatch_Tampilan_Sheet_Penerbit(hasilBatch, batchIndex) {
       const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-      const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
-      const daftarSheet = hasilBatch.map(
-        item => `${item.status} ${item.sheet}`
-      ).join('\n');
+      const namaSpreadsheet = SpreadsheetApp.getActive().getName();
+      const daftarSheet = hasilBatch
+        .map(item => `     • *${item.status}*  ${item.sheet}`)
+        .join('\n');
 
-      const pesan =
-    `📘 *Spreadsheet:* ${namaSpreadsheet}
-    ✅ *Fungsi Tampilan Sheet Penerbit Batch #${batchIndex} selesai diproses!*
+const pesan =
+`
+📘 *Spreadsheet :* 
+${namaSpreadsheet}
 
+✅ *Batch #${batchIndex} - Fungsi Tampilan Sheet Selesai !*
 
-    📄 *Hasil batch :*
-    ${daftarSheet}
+${daftarSheet}
 
-    🕒 *Waktu selesai:* ${waktu}`;
+🕒 *Waktu:* ${waktu}
 
-      kirimPesanTelegram_(pesan);
-    }
-  /** 🧩 Notifikasi batch ke Telegram */
-
-  /** 🧩 Notifikasi selesai semua batch */
-    function kirimNotifikasiSelesaiAkhir_Tampilan_Sheet_Penerbit(totalSheet) {
-      const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-      const namaSpreadsheet = SpreadsheetApp.getActiveSpreadsheet().getName();
-      const pesan =
-    `
-    📘 *Spreadsheet:* ${namaSpreadsheet}
-
-    🎉 *SEMUA SHEET SELESAI DIPROSES Fungsi Tampilan Sheet Penerbit !*
-
-    
-
-    📊 Total sheet: *${totalSheet}*
-    🕒 Waktu selesai: ${waktu}
-
-    Terima kasih sudah menunggu ☕`;
+`;
 
       kirimPesanTelegram_Tampilan_Sheet_Penerbit(pesan);
     }
-  /** 🧩 Notifikasi selesai semua batch */
+  /** 🧩 Notifikasi batch ke Telegram */
+
+  /** 🧩 Notifikasi ketika seluruh batch selesai */
+    function kirimNotifikasiSelesaiAkhir_Tampilan_Sheet_Penerbit(totalSheet) {
+      const waktu = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+      const namaSpreadsheet = SpreadsheetApp.getActive().getName();
+
+      const pesan =
+`
+🎉 *Fungsi Tampilan Sheet Semua Sheet Selesai !*
+
+📘 *Spreadsheet :* 
+${namaSpreadsheet}
+
+📊 *Total Sheet :* ${totalSheet}
+
+🕒 *Selesai pada :* ${waktu}
+
+`;
+
+      kirimPesanTelegram_Tampilan_Sheet_Penerbit(pesan);
+    }
+  /** 🧩 Notifikasi ketika seluruh batch selesai */
 
   /** 📬 Kirim pesan ke Telegram */
     function kirimPesanTelegram_Tampilan_Sheet_Penerbit(pesan) {
       const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
 
-      CHAT_IDS.forEach(id => {
+      CHAT_IDS.forEach(chatId => {
         try {
           UrlFetchApp.fetch(url, {
             method: "post",
             contentType: "application/json",
             payload: JSON.stringify({
-              chat_id: id,
+              chat_id: chatId,
               text: pesan,
               parse_mode: "Markdown"
             }),
             muteHttpExceptions: true
           });
 
-          Logger.log(`📨 Notifikasi dikirim ke ${id}`);
-        } catch (e) {
-          Logger.log(`⚠️ Gagal kirim notifikasi ke ${id}: ${e}`);
+          Logger.log(`📨 Notifikasi terkirim ke ${chatId}`);
+        } catch (error) {
+          Logger.log(`⚠️ Gagal mengirim notifikasi ke ${chatId}: ${error}`);
         }
       });
     }
-  /** 📬 Kirim pesan ke Telegram */
+  /** 📬 Kirim pesan ke Telegram */ 
 
-  /** 🧩 Hapus semua trigger batch lama */
-    function hapusSemuaTrigger_Tampilan_Sheet_Penerbit() {
-      const triggers = ScriptApp.getProjectTriggers();
-      triggers.forEach(t => ScriptApp.deleteTrigger(t));
+   /** 🧩 Hapus semua trigger batch lama */
+    function hapusSemuaTrigger_HapusPembelian() {
+      ScriptApp.getProjectTriggers().forEach(t => {
+        if (t.getHandlerFunction() === "jalankanBatchBerikutnya_Tampilan_Sheet_Penerbit") {
+          ScriptApp.deleteTrigger(t);
+        }
+      });
     }
-  /** 🧩 Hapus semua trigger batch lama */
-
+  /** 🧩 Hapus semua trigger batch lama */ 
+// endregion 
 //     ========     Fungsi Utama Mengirim Noftifikasi Ke Telegram    ========
